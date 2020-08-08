@@ -1,8 +1,4 @@
-*.tdms*
 __pycache__
-*.dat
-*.npy
 figs*/
-*.csv
-!ansys_dat_1*.csv
 *.pdf
+*.png

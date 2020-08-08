@@ -73,12 +73,12 @@ nfilt = nFilter(1000)
 wfilt = wFilter(11)
 
 Ex = ExfoJobj.ExfoJobj('12')
-Ex.Load_Wafer('12/eh', '12.dat')
+Ex.Load_Wafer('data/', '12.dat')
 ext = 4
 
 # Ex = ExfoJobj.ExfoJobj('12')
-# Ex.Load_Meta('', 'testmeta')
-# # Ex.Make_Meta('ansys_dat_122.csv')
+# Ex.Load_Meta('data/', 'testmeta')
+# # Ex.Make_Meta('data/ansys_dat_122.csv')
 # llim = 40
 # ulim = 65
 # Ex.Load_Batch('12', filt=filt, llim=llim, ulim=ulim)
@@ -140,18 +140,18 @@ plt.close(fig)
 
 n = 0
 fig, ax1, ax2 = Plot_Wafer_Def(Ex, n, lim)
-plt.savefig('D/figs/result0.png', dpi=600, transparent=True)
+plt.savefig('figs/result0.png', dpi=600, transparent=True)
 n = 1
 fig, ax1, ax2 = Plot_Wafer_Def(Ex, n, lim)
-plt.savefig('D/figs/result1.png', dpi=600, transparent=True)
+plt.savefig('figs/result1.png', dpi=600, transparent=True)
 n = 2
 fig, ax1, ax2 = Plot_Wafer_Def(Ex, n, lim)
-plt.savefig('D/figs/result2.png', dpi=600, transparent=True)
+plt.savefig('figs/result2.png', dpi=600, transparent=True)
 
 
 # %% Uniformity
 # Load wafer 141 data
-pdat = np.genfromtxt('P.csv', delimiter=",")[1:, :]
+pdat = np.genfromtxt('data/P.csv', delimiter=",")[1:, :]
 # shrink to comperable window
 pdat = pdat[70:144, :]
 e = pdat[:, 1]
@@ -185,9 +185,10 @@ ax2.set_xlabel('Distance from Stable Crack Start (mm)')
 fig.legend(bbox_to_anchor=(.9, .52), loc='center right', ncol=1, handles=[ax2.lines[1]])
 fig.tight_layout()
 suplabel(ax1, 'Thickness (µm)', labelpad=6.75)
-plt.savefig('D/figs/uniformity.png', dpi=600, transparent=True)
+plt.savefig('figs/uniformity.png', dpi=600, transparent=True)
+
 # %% No Compensation Simulation
-Ex.Make_Meta('ansys_dat_122.csv', i=1)
+Ex.Make_Meta('data/ansys_dat_122.csv', i=1)
 
 
 def Make_Ex(Ex, T=1, a=1500, h=150, k2=0, k1=730, filt=None, floor=False):
@@ -239,7 +240,7 @@ ax.set_ylabel('Si Thickness (µm)')
 ax.margins(x=0)
 fig.tight_layout(pad=0.1)
 
-plt.savefig('D/figs/compcomp.png', dpi=600, transparent=True)
+plt.savefig('figs/compcomp.png', dpi=600, transparent=True)
 
 
 # %% Repeatablility Hours
@@ -250,7 +251,7 @@ def Trimmer(sections):
 
 
 sections = [(0, 18), (34, 50)]
-filepath = 'dat'
+filepath = 'data'
 Ex3 = ExfoJobj.ExfoJobj('rep')
 llim = 21
 ulim = 69
@@ -268,7 +269,7 @@ nfs = np.percentile(Ex3.wafer.error_byp_b*1000, (2.5, 97.5))
 print('Error mean: {:02.2f} µm'.format(nfs.mean()))
 print('Error 95% confidence interval: {:02.2f}-{:02.2f} µm'.format(nfs[0], nfs[1]))
 
-plt.savefig('D/figs/repeat25.png', dpi=600, transparent=True)
+plt.savefig('figs/repeat25.png', dpi=600, transparent=True)
 # %% Repeatability Days
 mnw, std, n, SEM, xw = Ex3.base.fmeans
 mnb, std, n, SEM, xb = Ex3.wafer.fmeans
@@ -305,7 +306,7 @@ nfsz = np.percentile(abs(z), (2.5, 97.5))
 print('Error mean: {:02.2f} µm'.format(nfsz.mean()))
 print('Error 95% confidence interval: {:02.2f}-{:02.2f} µm'.format(nfsz[0], nfsz[1]))
 
-plt.savefig('D/figs/repeatd.png', dpi=600, transparent=True)
+plt.savefig('figs/repeatd.png', dpi=600, transparent=True)
 
 
 # %% Remove repeatable error
@@ -315,11 +316,11 @@ glass = 1.8631
 k = .101
 
 Exr = ExfoJobj.ExfoJobj('12')
-Exr.Load_Meta('', 'testmeta')
+Exr.Load_Meta('data/', 'testmeta')
 # Ex.Make_Meta('ansys_dat_122.csv')
 llim = 40
 ulim = 65
-Exr.Load_Batch('12', filt=exFilter(1000), llim=llim, ulim=ulim)
+Exr.Load_Batch('data/12', filt=exFilter(1000), llim=llim, ulim=ulim)
 
 Exr.Wafer_Sync(resamp=(llim, ulim))
 
@@ -334,4 +335,4 @@ ax[2].set_xlabel('Chuck Distance (mm)')
 fig.tight_layout(pad=1.2)
 AxZoom.suplabel(ax, 'Laser Distance (µm)', labelpad=11)
 
-plt.savefig('D/figs/remainder.png', dpi=600, transparent=True)
+plt.savefig('figs/remainder.png', dpi=600, transparent=True)

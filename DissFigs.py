@@ -71,12 +71,12 @@ nfilt = nFilter(1000)
 wfilt = wFilter(11)
 
 Ex = ExfoJobj.ExfoJobj('12')
-Ex.Load_Wafer('12/eh', '12.dat')
+Ex.Load_Wafer('data/', '12.dat')
 ext = 4
 
 # Ex = ExfoJobj.ExfoJobj('12')
-# Ex.Load_Meta('', 'testmeta')
-# # Ex.Make_Meta('ansys_dat_122.csv')
+# Ex.Load_Meta('data/', 'testmeta')
+# # Ex.Make_Meta('data/ansys_dat_122.csv')
 # llim = 40
 # ulim = 65
 # Ex.Load_Batch('12', filt=filt, llim=llim, ulim=ulim)
@@ -92,11 +92,11 @@ ext = 4
 print('Exfo average error from target: {:02.2f} µm'.format(abs(Ex.ex*1E6-ext).mean()))
 fig, ax1, ax2 = Ex.Plot_Wafer()
 
-plt.savefig('12/fig/result.pdf', dpi=300, transparent=True)
+plt.savefig('figs/result.pdf', dpi=300, transparent=True)
 
 # %% Uniformity
 # Load wafer 141 data
-pdat = np.genfromtxt('P.csv', delimiter=",")[1:, :]
+pdat = np.genfromtxt('data/P.csv', delimiter=",")[1:, :]
 # shrink to comperable window
 pdat = pdat[70:144, :]
 e = pdat[:, 1]
@@ -118,7 +118,7 @@ print('{:2.0f}% improvement in uniformity'.format((uni141-uni12)/uni141*100))
 print('{:2.0f}% improvement in STD'.format((sstd141-sstd12*1E6)/sstd141*100))
 
 # %% No Compensation Simulation
-Ex.Make_Meta('ansys_dat_122.csv', i=1)
+Ex.Make_Meta('data/ansys_dat_122.csv', i=1)
 
 
 def Make_Ex(Ex, T=1, a=1500, h=150, k2=0, k1=730, filt=None, floor=False):
@@ -168,7 +168,7 @@ ax.set_ylabel('Si Thickness (µm)')
 ax.margins(x=0)
 fig.tight_layout(pad=0.1)
 
-plt.savefig('12/fig/compcomp.pdf', dpi=300, transparent=True)
+plt.savefig('figs/compcomp.pdf', dpi=300, transparent=True)
 
 
 # %% Repeatablility Hours
@@ -179,7 +179,7 @@ def Trimmer(sections):
 
 
 sections = [(0, 18), (34, 50)]
-filepath = 'dat'
+filepath = 'data'
 Ex3 = ExfoJobj.ExfoJobj('rep')
 llim = 21
 ulim = 69
@@ -197,7 +197,7 @@ nfs = np.percentile(Ex3.wafer.error_byp_b*1000, (2.5, 97.5))
 print('Error mean: {:02.2f} µm'.format(nfs.mean()))
 print('Error 95% confidence interval: {:02.2f}-{:02.2f} µm'.format(nfs[0], nfs[1]))
 
-plt.savefig('12/fig/repeat25.pdf', dpi=300, transparent=True)
+plt.savefig('figs/repeat25.pdf', dpi=300, transparent=True)
 # %% Repeatability Days
 mnw, std, n, SEM, xw = Ex3.base.fmeans
 mnb, std, n, SEM, xb = Ex3.wafer.fmeans
@@ -234,7 +234,7 @@ nfsz = np.percentile(abs(z), (2.5, 97.5))
 print('Error mean: {:02.2f} µm'.format(nfsz.mean()))
 print('Error 95% confidence interval: {:02.2f}-{:02.2f} µm'.format(nfsz[0], nfsz[1]))
 
-plt.savefig('12/fig/repeatd.pdf', dpi=300, transparent=True)
+plt.savefig('figs/repeatd.pdf', dpi=300, transparent=True)
 
 
 # %% Remove Repeatable Error by Integration
@@ -352,19 +352,19 @@ t = np.arange(0, 2*np.pi, .001)
 d = -.2
 x1, x2, x3, b1, b2 = fake_func(t, d)
 plot_PICA(x1, x2, b1, b2)
-plt.savefig('12/fig/PICA.pdf', dpi=300, transparent=True)
+plt.savefig('figs/PICA.pdf', dpi=300, transparent=True)
 
 tr, r = ICR(t, x1, x2, x3, b1, b2, d)
-plt.savefig('12/fig/ICRexam.pdf', dpi=300, transparent=True)
+plt.savefig('figs/ICRexam.pdf', dpi=300, transparent=True)
 plot_error(t, x1, tr, r)
-plt.savefig('12/fig/ICRexamEr.pdf', dpi=300, transparent=True)
+plt.savefig('figs/ICRexamEr.pdf', dpi=300, transparent=True)
 
 # %% Test ICR on real fake data
 filt = exFilter(50)
 Ex1 = ExfoJobj.ExfoJobj('1')
-Ex1.Load_Batch('TB4', filt=filt)
+Ex1.Load_Batch('data/TB4', filt=filt)
 Ex2 = ExfoJobj.ExfoJobj('2')
-Ex2.Load_Batch('TB6', filt=filt)
+Ex2.Load_Batch('data/TB6', filt=filt)
 Ex1.Wafer_Sync()
 Ex2.Wafer_Sync()
 d = -.05
@@ -389,7 +389,7 @@ b2 -= b2.mean()
 tr, r = ICR(t, x1, x2, x3, b1, b2, d, dm=True)
 plt.close()
 plot_error(t, x1, tr, r, dm=True)
-plt.savefig('12/fig/realeICR.pdf', dpi=300, transparent=True)
+plt.savefig('figs/realeICR.pdf', dpi=300, transparent=True)
 # %% with noise
 t = np.arange(0, 2*np.pi, .001)
 
@@ -400,7 +400,7 @@ filt = exFilter(50)
 tr, r, noise, noise2 = ICR(t, x1, x2, x3, b1, b2, d, n=.03, filt=filt)
 plt.close()
 plot_error(t, x1, tr, r)
-plt.savefig('12/fig/ICRexamNoise.pdf', dpi=300, transparent=True)
+plt.savefig('figs/ICRexamNoise.pdf', dpi=300, transparent=True)
 d = -.05
 
 # mix two scans
@@ -425,7 +425,7 @@ b2 -= b2.mean()
 tr, r, noise, noise2 = ICR(t, x1, x2, x3, b1, b2, d, dm=True, n=.03, filt=filt)
 plt.close()
 plot_error(t, x1, tr, r, dm=True)
-plt.savefig('12/fig/realeICRnoise.pdf', dpi=300, transparent=True)
+plt.savefig('figs/realeICRnoise.pdf', dpi=300, transparent=True)
 
 # %% Remove repeatable error
 w = .545
@@ -434,11 +434,11 @@ glass = 1.8631
 k = .101
 
 Exr = ExfoJobj.ExfoJobj('12')
-Exr.Load_Meta('', 'testmeta')
+Exr.Load_Meta('data/', 'testmeta')
 # Ex.Make_Meta('ansys_dat_122.csv')
 llim = 40
 ulim = 65
-Exr.Load_Batch('12', filt=exFilter(1000), llim=llim, ulim=ulim)
+Exr.Load_Batch('data/12', filt=exFilter(1000), llim=llim, ulim=ulim)
 
 Exr.Wafer_Sync(resamp=(llim, ulim))
 
@@ -453,4 +453,4 @@ ax[2].set_xlabel('Chuck Distance (mm)')
 fig.tight_layout(pad=1)
 AxZoom.suplabel(ax, 'Laser Distance (µm)', labelpad=9)
 
-plt.savefig('12/fig/remainder.pdf', dpi=300, transparent=True)
+plt.savefig('figs/remainder.pdf', dpi=300, transparent=True)
