@@ -2,7 +2,7 @@
  Based on ArduinoDRO by Yuriy Krushelnytskiy
  Edits for exfoliation by Martin Ward
  *******************************************
-
+ 
   ArduinoDRO + Tach V3
 
   Reading Grizzly iGaging Digital Scales V2.1 Created 19 January 2012
@@ -28,13 +28,12 @@
 */
 #include "HX711.h"
 #include <Wire.h>
-#include "VL6180XMM.cpp"
 #include <Encoder.h>
 #include <MovingAverage.h>
 #include <PID_v1.h>
 
-#define calibration_factor -206950.0 //This value is obtained using the SparkFun_HX711_Calibration sketch
-#define zero_factor -63153 //This large value is obtained using the SparkFun_HX711_Calibration sketch
+//#define calibration_factor -206950.0 //This value is obtained using the SparkFun_HX711_Calibration sketch
+//#define zero_factor -63153 //This large value is obtained using the SparkFun_HX711_Calibration sketch
 
 const int DOUT = 5;
 const int CLK = 4;
@@ -55,14 +54,15 @@ boolean const droSupported = (xAxisSupported);
 volatile long xCoord;
 
 double Setpoint, Input, Output;
-double Kp = .2, Ki = 0.45, Kd = 0.01;
+double Kp = .01, Ki = 0.1, Kd = 0.001;
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 int enA = 9;
 
-double Setpointp, Inputp, Outputp;
-double Kpp = 5, Kip = 20, Kdp = .5;
-PID myPIDp(&Inputp, &Outputp, &Setpointp, Kpp, Kip, Kdp, DIRECT);
-int PressurePin = 6;
+//double Setpointp, Inputp, Outputp;
+double Inputp;
+//double Kpp = 5, Kip = 20, Kdp = .5;
+//PID myPIDp(&Inputp, &Outputp, &Setpointp, Kpp, Kip, Kdp, DIRECT);
+//int PressurePin = 6;
 
 Encoder myEnc(18, 19);
 unsigned long measureTime = 0;
@@ -70,12 +70,9 @@ long newPosition = 1;
 long oldPosition = 0;
 
 volatile uint32_t rpm = 0;
-MovingAverage average(5);
+MovingAverage average(10);
 
-//HX711 scale(DOUT, CLK);
 HX711 scale;
-
-VL6180XMM sensor;
 
 void setup()
 {
@@ -84,32 +81,28 @@ void setup()
   //data pins should be set as inputs
   pinMode(xDataPin, INPUT);
   //initialize serial port
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   Setpoint = 0;
   myPID.SetMode(AUTOMATIC);
   myPID.SetOutputLimits(0, 255);
   myPID.SetSampleTime(25);
-  pinMode(PressurePin, OUTPUT);  // sets the pin as output
-  TCCR4B = (TCCR4B & 0xF8) | 0x01;
-
-  Setpointp = 0;
-  myPIDp.SetMode(AUTOMATIC);
-  myPIDp.SetOutputLimits(0, 255);
-  myPIDp.SetSampleTime(25);
   pinMode(enA, OUTPUT);
-  TCCR2B = (TCCR2B & 0xF8) | 0x01;
+  TCCR2B = (TCCR4B & 0xF8) | 0x01;
+
+//  Setpointp = 0;
+//  myPIDp.SetMode(AUTOMATIC);
+//  myPIDp.SetOutputLimits(0, 255);
+//  myPIDp.SetSampleTime(25);
+//  pinMode(PressurePin, OUTPUT);  // sets the pin as output
+//  TCCR4B = (TCCR2B & 0xF8) | 0x01;
 
   average.reset(0.0);
 
   scale.begin(DOUT, CLK);
-  scale.set_scale(calibration_factor); //This value is obtained by using the SparkFun_HX711_Calibration sketch
-  scale.set_offset(zero_factor);
+  scale.set_scale(-206950.0); //This value is obtained by using the SparkFun_HX711_Calibration sketch
+  scale.set_offset(-61003);
 
-  Wire.begin();
-  sensor.init();
-  sensor.configureDefault();
-  sensor.setTimeout(500);
 }
 //float mapfloat(float x, float in_min, float in_max, float out_min, float out_max)
 //{
@@ -138,15 +131,12 @@ void loop()
 
   Setpoint = map(analogRead(A0), 10, 1023, 0, 3600);
   //  Setpointp = mapfloat(analogRead(A1), 1, 1023, 0.0, 9.0);
-  Setpointp = map(analogRead(A1), 1, 1023, 0.0, 900) / 100;
+//  Setpointp = map(analogRead(A1), 1, 1023, 0, 900) / 100.0;
 
   newPosition = myEnc.read();
   rpm = ((abs(oldPosition - newPosition)) * 60000) / (44 * (millis() - measureTime));
   oldPosition = newPosition;
   average.update(rpm);
-  Input = average.get();
-
-  Inputp = scale.get_units();
   measureTime = millis();
 
   Serial.print(measureTime);
@@ -155,17 +145,18 @@ void loop()
   Serial.print(" ");
   Serial.print(Inputp);
   Serial.print(" ");
-  Serial.print(sensor.readRangeSingleRaw());
-  Serial.print(" ");
-  Serial.print(rpm);
+//  Serial.print(rpm);
   Serial.println();
 
   noInterrupts();
+  Input = average.get();
+  Inputp = scale.get_units(2); //3
+
   myPID.Compute();
-  myPIDp.Compute();
+//  myPIDp.Compute();
 
   analogWrite(enA, Output);
-  analogWrite(PressurePin, Outputp);
+//  analogWrite(PressurePin, Outputp);
   interrupts();
 
 }
