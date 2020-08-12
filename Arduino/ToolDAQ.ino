@@ -2,7 +2,7 @@
  Based on ArduinoDRO by Yuriy Krushelnytskiy
  Edits for exfoliation by Maritn Ward
  *******************************************
-
+ 
   ArduinoDRO + Tach V3
 
   Reading Grizzly iGaging Digital Scales V2.1 Created 19 January 2012
@@ -117,7 +117,7 @@ volatile long xCoord;
 
 #include "HX711.h"
 #include <Wire.h>
-#include <VL6180XM.h>
+#include "VL6180XMM.cpp"
 
 #define calibration_factor 206950.0 //This value is obtained using the SparkFun_HX711_Calibration sketch
 #define zero_factor -63153 //This large value is obtained using the SparkFun_HX711_Calibration sketch
@@ -129,7 +129,7 @@ HX711 scale(DOUT, CLK);
 
 unsigned long tms;
 
-VL6180XM sensor;
+VL6180XMM sensor;
 //The setup function is called once at startup of the sketch
 void setup()
 {
