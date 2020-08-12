@@ -1,6 +1,6 @@
 /*
  Based on ArduinoDRO by Yuriy Krushelnytskiy
- Edits for exfoliation by Maritn Ward
+ Edits for exfoliation by Martin Ward
  *******************************************
  
   ArduinoDRO + Tach V3
@@ -86,20 +86,31 @@
       any integer number > 0
     Default value = 1200 (the minimum rpm measured will be 50 rpm)
 
----VL61080X---
+  ---VL61080X---
     This example shows how to change the range scaling factor
-of the VL6180X. The sensor uses 1x scaling by default,
-giving range measurements in units of mm. Increasing the
-scaling to 2x or 3x makes it give raw values in units of 2
-mm or 3 mm instead. In other words, a bigger scaling factor
-increases the sensor's potential maximum range but reduces
+  of the VL6180X. The sensor uses 1x scaling by default,
+  giving range measurements in units of mm. Increasing the
+  scaling to 2x or 3x makes it give raw values in units of 2
+  mm or 3 mm instead. In other words, a bigger scaling factor
+  increases the sensor's potential maximum range but reduces
 
 */
+#include "HX711.h"
+#include <Wire.h>
+#include "VL6180XMM.cpp"
+#include <Encoder.h>
+#include <MovingAverage.h>
+#include <PID_v1.h>
+#include <LiquidCrystal_I2C.h>
 
+#define calibration_factor -206950.0 //This value is obtained using the SparkFun_HX711_Calibration sketch
+#define zero_factor -63153 //This large value is obtained using the SparkFun_HX711_Calibration sketch
+
+#define DOUT  5
+#define CLK  4
 
 // DRO config (if axis is not connected change in the corresponding constant value from "true" to "false")
 boolean const xAxisSupported = true;
-
 
 // I/O ports config (change pin numbers if DRO, Tach sensor or Tach LED feedback is connected to different ports)
 int const clockPin = 2;
@@ -113,33 +124,62 @@ boolean const droSupported = (xAxisSupported);
 //variables that will store the readout
 volatile long xCoord;
 
-// HX711 Load Cell
+double Setpoint, Input, Output;
+double Kp = .2, Ki = 0.45, Kd = 0.01;
+PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 
-#include "HX711.h"
-#include <Wire.h>
-#include "VL6180XMM.cpp"
+int enA = 9;
+//int in1 = 8;
+//int in2 = 7;
 
-#define calibration_factor 206950.0 //This value is obtained using the SparkFun_HX711_Calibration sketch
-#define zero_factor -63153 //This large value is obtained using the SparkFun_HX711_Calibration sketch
+int PressurePin = 6;
+double Setpointp, Inputp, Outputp;
+double Kpp = 5, Kip = 20, Kdp = .5;
+PID myPIDp(&Inputp, &Outputp, &Setpointp, Kpp, Kip, Kdp, DIRECT);
 
-#define DOUT  5
-#define CLK  4
+Encoder myEnc(18, 19);
+unsigned long measureTime = 0;
+long newPosition = 1;
+long oldPosition = 0;
+
+volatile uint32_t rpm = 0;
+MovingAverage average(10);
 
 HX711 scale(DOUT, CLK);
 
-unsigned long tms;
-
 VL6180XMM sensor;
-//The setup function is called once at startup of the sketch
+
+LiquidCrystal_I2C lcd(0x3F, 20, 4);
+
 void setup()
 {
+  Setpoint = 3000;
+  myPID.SetMode(AUTOMATIC);
+  myPID.SetOutputLimits(0, 255);
+  myPID.SetSampleTime(25);
+
+  pinMode(PressurePin, OUTPUT);  // sets the pin as output
+
+  Setpointp = 2;
+  myPIDp.SetMode(AUTOMATIC);
+  myPIDp.SetOutputLimits(0, 255);
+  myPIDp.SetSampleTime(25);
+
+  pinMode(enA, OUTPUT);
+  //  pinMode(in1, OUTPUT);
+  //  pinMode(in2, OUTPUT);
+  // Turn off motors - Initial state
+  //  digitalWrite(in2, HIGH);
+  //  digitalWrite(in1, LOW);
+//  analogWrite(enA, 255);
+
+  average.reset(0.0);
+
   //clock pin should be set as output
-  if (droSupported)
-    pinMode(clockPin, OUTPUT);
+  pinMode(clockPin, OUTPUT);
 
   //data pins should be set as inputs
-  if (xAxisSupported)
-    pinMode(xDataPin, INPUT);
+  pinMode(xDataPin, INPUT);
 
   //initialize serial port
   Serial.begin(9600);
@@ -151,58 +191,79 @@ void setup()
   sensor.init();
   sensor.configureDefault();
   sensor.setTimeout(500);
+  lcd.init();
+  lcd.backlight();
 }
 
 
 // The loop function is called in an endless loop
 void loop()
 {
+  Setpoint = map(analogRead(A0), 0, 1023, 0, 3600);
+  Setpointp = map(analogRead(A1), 0, 1023, 0.0, 9.0);
 
-  tms = millis();
+  //  tms = millis();
+  newPosition = myEnc.read();
+  rpm = ((abs(oldPosition - newPosition)) * 60000) / (44 * (millis() - measureTime));
+  oldPosition = newPosition;
+  average.update(rpm);
+  Input = average.get();
+  
+  Inputp = scale.get_units();
+  measureTime = millis();
 
   //readTach() is called so often to provide the greatest accuracy
-  if (droSupported)
+  xCoord = 0;
+
+  int bitOffset;
+
+  //read the first 20 bits
+  for (bitOffset = 0; bitOffset < 21; bitOffset++)
   {
-    xCoord = 0;
-
-    int bitOffset;
-
-    //read the first 20 bits
-    for (bitOffset = 0; bitOffset < 21; bitOffset++)
-    {
-      tickTock();
-
-      //read the pin state and shift it into the appropriate variables
-      if (xAxisSupported)
-        xCoord |= ((long)digitalRead(xDataPin) << bitOffset);
-
-    }
-
     tickTock();
-
-    //read the last bit (signified the sign)
-    //if it's high, fill 11 leftmost bits with "1"s
-    if (xAxisSupported) {
-      if (digitalRead(xDataPin) == HIGH)
-        xCoord |= ((long)0x7ff << 21);
-    }
-
-    //print DRO positions to the serial port
-    Serial.print(tms);
-    Serial.print(" ");
-    if (xAxisSupported) {
-      //Serial.print("X");
-
-      Serial.print((long)xCoord);
-    }
-    Serial.print(" ");
-    Serial.print(scale.get_units(), 2);
-
-    Serial.print(" ");
-    Serial.print(sensor.readRangeSingleRaw());
-    Serial.println();
+    //read the pin state and shift it into the appropriate variables
+    xCoord |= ((long)digitalRead(xDataPin) << bitOffset);
   }
-  delay(1);
+
+  tickTock();
+
+  //read the last bit (signified the sign)
+  //if it's high, fill 11 leftmost bits with "1"s
+  if (digitalRead(xDataPin) == HIGH)
+    xCoord |= ((long)0x7ff << 21);
+
+  Serial.print(measureTime);
+  Serial.print(" ");
+  Serial.print((long)xCoord);
+  Serial.print(" ");
+  //  Serial.print(scale.get_units(), 2);
+  Serial.print(Inputp);
+
+  Serial.print(" ");
+  Serial.print(sensor.readRangeSingleRaw());
+      Serial.print(" ");
+      Serial.print(rpm);
+  Serial.println();
+
+//  noInterrupts();
+  myPID.Compute();
+  myPIDp.Compute();
+//  interrupts();
+
+  analogWrite(enA, Output);
+  analogWrite(PressurePin, Outputp);
+
+//  lcd.setCursor(1, 0);
+//  lcd.print("Speed ");
+//  lcd.print(Setpoint / 197);
+//  lcd.print(" mm/min");
+//  lcd.setCursor(1, 3);
+//  lcd.print("Load  ");
+//  lcd.print(Setpointp * 9.81);
+//  lcd.print(" N");
+  
+  //  lcd.clear();
+  //  delay(1);
 }
 
 
