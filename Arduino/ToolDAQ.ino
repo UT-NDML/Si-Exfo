@@ -2,7 +2,7 @@
  Based on ArduinoDRO by Yuriy Krushelnytskiy
  Edits for exfoliation by Maritn Ward
  *******************************************
- 
+
   ArduinoDRO + Tach V3
 
   Reading Grizzly iGaging Digital Scales V2.1 Created 19 January 2012
@@ -86,6 +86,14 @@
       any integer number > 0
     Default value = 1200 (the minimum rpm measured will be 50 rpm)
 
+---VL61080X---
+    This example shows how to change the range scaling factor
+of the VL6180X. The sensor uses 1x scaling by default,
+giving range measurements in units of mm. Increasing the
+scaling to 2x or 3x makes it give raw values in units of 2
+mm or 3 mm instead. In other words, a bigger scaling factor
+increases the sensor's potential maximum range but reduces
+
 */
 
 
@@ -108,6 +116,8 @@ volatile long xCoord;
 // HX711 Load Cell
 
 #include "HX711.h"
+#include <Wire.h>
+#include <VL6180XM.h>
 
 #define calibration_factor 206950.0 //This value is obtained using the SparkFun_HX711_Calibration sketch
 #define zero_factor -63153 //This large value is obtained using the SparkFun_HX711_Calibration sketch
@@ -119,6 +129,7 @@ HX711 scale(DOUT, CLK);
 
 unsigned long tms;
 
+VL6180XM sensor;
 //The setup function is called once at startup of the sketch
 void setup()
 {
@@ -136,6 +147,10 @@ void setup()
   scale.set_scale(calibration_factor); //This value is obtained by using the SparkFun_HX711_Calibration sketch
   scale.set_offset(zero_factor);
 
+  Wire.begin();
+  sensor.init();
+  sensor.configureDefault();
+  sensor.setTimeout(500);
 }
 
 
@@ -182,8 +197,10 @@ void loop()
     }
     Serial.print(" ");
     Serial.print(scale.get_units(), 2);
-    Serial.println();
 
+    Serial.print(" ");
+    Serial.print(sensor.readRangeSingleRaw());
+    Serial.println();
   }
   delay(1);
 }
