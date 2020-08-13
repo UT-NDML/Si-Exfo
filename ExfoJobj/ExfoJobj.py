@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import pickle
 from scipy import signal
 import AxZoom
+from scipy.ndimage import uniform_filter1d
 
 
 class ExfoJobj(object):
@@ -165,6 +166,10 @@ class ExfoJobj(object):
         -------
         None.
         """
+
+        if type(filt) is int:
+            filt = exFilter(filt)
+
         names = set([Path(d.stem).stem for d in [*Path(directory).iterdir()]])
         for n in names:
             filepath = directory
@@ -184,7 +189,11 @@ class ExfoJobj(object):
                 continue
             self.Load_Scan(filepath, file, trim, scan=False, filt=filt, llim=llim, ulim=ulim)
 
-    def Get_Stress(self, win=100, wafer_thickness=500E-6, filt=None):
+    def Get_Stress(self, win=50, wafer_thickness=580E-6, filt=None):
+
+        if type(filt) is int:
+            filt = sFilter(self, filt)
+
         MSi = 1.803E11
         ENi = 180E9
         nuNi = .31
@@ -260,7 +269,10 @@ class ExfoJobj(object):
             setattr(self, 'sync_'+scan+'_x', scan_x[x_min:x_min+x_len])
 
         # need to add scaling if enc is not uniform
-    def Wafer_Make(self, w=.546, wo=.017, glass=1.8631, k=.101, filt=None):
+    def Wafer_Make(self, w=.545, wo=.017, glass=1.8631, k=.101, filt=None):
+
+        if type(filt) is int:
+            filt = wFilter(filt)
 
         self.x = self.sync_base_x
         self.w = glass+w+k-wo
@@ -278,6 +290,7 @@ class ExfoJobj(object):
             self.ni = filt(self.ni)
         if hasattr(self, 'load'):
             self.load.enc = self.load.enc-self.x[0]
+        self.x = self.x-self.x[0]
 
     def Pickle_Wafer(self, filepath, file):
         """Pickle the wafer data so it can be loaded faster."""
@@ -343,6 +356,9 @@ class ExfoJobj(object):
         -------
         None.
         """
+
+        if type(filt) is int:
+            filt = nFilter(self, filt)
 
         const = np.array([0, ex, 0, a, h, k2, k1])
         C = np.ones((self.ni.shape[0], 7))*const
@@ -928,3 +944,41 @@ def syncstuff(x1, y1, x2, y2, dm=False, r=2):
             Y1.append(f[i])
             Y2.append(b[i])
     return map(lambda x: np.array(x), [X, Y1, Y2])
+
+
+def exFilter(size):
+    # make filter for scans
+    def filt(lzr):
+        lzr = signal.medfilt(lzr, 65)
+        lzr = uniform_filter1d(lzr, size)
+        return lzr
+    return filt
+
+
+def wFilter(size):
+    # make filter for processed scans
+    def filt(lzr):
+        lzr = signal.medfilt(lzr, size)
+        return lzr
+    return filt
+
+
+def sFilter(Ex, size):
+    # make filter for calculating stress
+    def filt(lzr):
+        lzr = signal.medfilt(lzr, 129)
+        z = np.polyfit(Ex.sync_stress_x, lzr, size)
+        p = np.poly1d(z)
+        lzr = p(Ex.sync_stress_x)
+        return lzr
+    return filt
+
+
+def nFilter(Ex, size):
+    # make filter for calculating load
+    def filt(lzr):
+        z = np.polyfit(Ex.sync_stress_x, lzr, size)
+        p = np.poly1d(z)
+        lzr = p(Ex.sync_stress_x)
+        return lzr
+    return filt
