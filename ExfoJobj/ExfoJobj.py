@@ -335,7 +335,7 @@ class ExfoJobj(object):
             open(Path(Path(filepath).joinpath(file)).with_suffix(".dat"), 'rb'))
         print('Loading ', Path(file).name)
 
-    def Make_Load(self, ex=8, a=1500, h=150, k2=0, k1=730, filt=None, floor=False):
+    def Make_Load(self, ex=8, a=1500, h=150, k2=0, k1=730, filt=None, floor=5):
         """
         Make compensated Load profile
 
